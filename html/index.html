@@ -114,7 +114,7 @@
         crypt;
 
       alertMessage = (text, milliseconds = 1500) => {
-        $("#alertText").text("asdf");
+        $("#alertText").text(text);
         $("#alert").show();
         window.setTimeout(() => {
           $("#alert").hide();
@@ -173,7 +173,7 @@
               break;
             case "key":
               friendPublic = msg.key;
-              console.log(friendPublic);
+              alertMessage("connected! friendKey: " + friendPublic, 2000);
               break;
             case "get":
               crypt.setPrivateKey(myPrivate);
