@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Very Very Secret Chat</title>
+    <!-- CSS only -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+      integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+      crossorigin="anonymous"
+    />
+    <style>
+      #alert {
+        position: fixed;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        z-index: 9999;
+        border-radius: 0px;
+      }
+      #noresize {
+        resize: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="alert" class="alert alert-primary" style="display: none;">
+      <span>
+        <p id="alertText"></p>
+      </span>
+    </div>
+    <div id="form">
+      <div class="input-group mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">Your ID</span>
+        </div>
+        <input
+          id="myId"
+          type="text"
+          class="form-control"
+          placeholder="Connecting..."
+          readonly
+        />
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick="document.getElementById('myId').select(); document.execCommand('Copy'); alert('copyed!');"
+        >
+          Copy
+        </button>
+      </div>
+      <div class="input-group mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">Input Friend ID</span>
+        </div>
+        <input
+          id="friendId"
+          type="text"
+          class="form-control"
+          placeholder="..."
+        />
+        <button type="button" class="btn btn-secondary" onclick="conn();">
+          Connect
+        </button>
+      </div>
+      <div class="input-group">
+        <textarea
+          id="output"
+          class="form-control"
+          style="resize: none; height: 500px;"
+          readonly
+        ></textarea>
+      </div>
+      <div class="input-group mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">Input Text</span>
+        </div>
+        <input
+          id="input"
+          type="text"
+          class="form-control"
+          placeholder="..."
+          maxlength="60"
+        />
+      </div>
+    </div>
+    <script src="https://travistidwell.com/jsencrypt/bin/jsencrypt.js"></script>
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+      integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+      integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+      integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+      crossorigin="anonymous"
+    ></script>
+
+    <script>
+      let input,
+        output,
+        myId,
+        friendId,
+        ws,
+        myPrivate,
+        myPublic,
+        friendPublic,
+        crypt;
+
+      alertMessage = (text, milliseconds = 1500) => {
+        $("#alertText").text("asdf");
+        $("#alert").show();
+        window.setTimeout(() => {
+          $("#alert").hide();
+        }, milliseconds);
+      };
+
+      $(document).ready(() => {
+        input = document.getElementById("input");
+        output = document.getElementById("output");
+        myId = document.getElementById("myId");
+        friendId = document.getElementById("friendId");
+        $("#input").keypress((e) => {
+          if (e.which == 13) {
+            crypt.setPublicKey(friendPublic);
+            send({
+              func: "send",
+              to: friendId.value,
+              content: crypt.encrypt(input.value),
+            });
+            output.value += myId.value + ": " + input.value + "\n";
+            input.value = "";
+          }
+        });
+        init();
+      });
+
+      init = () => {
+        crypt = new JSEncrypt({ default_key_size: 2048 });
+        crypt.getKey();
+        myPublic = crypt.getPublicKey();
+        myPrivate = crypt.getPrivateKey();
+
+        ws = new WebSocket("ws://localhost:3000");
+        ws.onopen = (event) => {
+          send({
+            func: "init",
+          });
+        };
+        ws.onclose = (event) => {
+          alert("closed!");
+        };
+        ws.onmessage = (event) => {
+          msg = JSON.parse(event.data);
+          switch (msg.func) {
+            case "init":
+              myId.value = msg.id;
+              break;
+            case "conn":
+              friendId.value = msg.id;
+              friendId.readOnly = true;
+              send({
+                func: "key",
+                id: msg.id,
+                key: myPublic,
+              });
+              break;
+            case "key":
+              friendPublic = msg.key;
+              console.log(friendPublic);
+              break;
+            case "get":
+              crypt.setPrivateKey(myPrivate);
+              msg.content = crypt.decrypt(msg.content);
+              output.value += msg.from + ": " + msg.content + "\n";
+              break;
+            default:
+              break;
+          }
+        };
+        ws.onerror = (event) => {
+          alert("error!");
+        };
+      };
+
+      conn = () => {
+        let id = friendId.value;
+        send({ func: "conn", id: id });
+      };
+
+      send = (msg) => {
+        ws.send(JSON.stringify(msg));
+      };
+    </script>
+  </body>
+</html>
