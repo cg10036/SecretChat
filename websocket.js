@@ -10,11 +10,11 @@ module.exports = (server) => {
     let id = genID();
     clients[id] = ws;
     let ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-    console.log("connected from " + ip);
+    // console.log("connected from " + ip);
 
     ws.on("message", (message) => {
       let msg = JSON.parse(message);
-      console.log(msg);
+      // console.log(msg);
       switch (msg.func) {
         case "init":
           ws.send(JSON.stringify({ func: "init", id: id }));
@@ -43,7 +43,7 @@ module.exports = (server) => {
     });
 
     ws.on("error", (err) => {
-      console.log("error from " + ip);
+      // console.log("error from " + ip);
     });
 
     ws.on("close", () => {
